@@ -41,7 +41,10 @@ def parse_args():
         '--results_dir', type=str, default='/home/user0/results/predictions', help="Directory to save predictions"
     )
     parser.add_argument(
-        '--batch_size', type=int, default=64, help="Batch size for model training (default: 64)"
+        '--train_batch_size', type=int, default=1, help="Batch size for model training (default: 64)"
+    )
+    parser.add_argument(
+        '--predict_batch_size', type=int, default=1, help="Batch size for model training (default: 64)"
     )
     parser.add_argument(
         '--filter_file_path', type=str, default='config/filter_index.fea', help="Path to filter index file"
@@ -71,6 +74,7 @@ def main():
         logger.info(f"Period {i+1}:")
         logger.info(f"  Train Dates: {train_dates_list[i]}")
         logger.info(f"  Predict Dates: {predict_dates_list[i]}")
+
         # Load and preprocess data for the current period
         train_date_list, predict_date_list = train_dates_list[i], predict_dates_list[i]
         train_data_list, predict_data_list = [], []
@@ -84,7 +88,8 @@ def main():
             data = pipeline_data.ensure_data_types(data)                                                # Ensure correct data types
             data = pipeline_data.fill_missing_values(data, fill_value=0.0)                              # Handle missing values
             data = pipeline_data.normalize_columns(data, feature_cols)                                  # Normalize features
-            train_data_list.append(data)
+            target = pipeline_data.load_data(file_path).iloc[:, 4]
+            train_data_list.append((data, target))
         for date in tqdm.tqdm(predict_date_list[:10], desc="Loading prediction data"):
             file_path = os.path.join(args.data_dir, f"{date}.fea")
             data = pipeline_data.load_data(file_path)
@@ -94,8 +99,19 @@ def main():
             data = pipeline_data.ensure_data_types(data)                                                # Ensure correct data types
             data = pipeline_data.fill_missing_values(data, fill_value=0.0)                              # Handle missing values
             data = pipeline_data.normalize_columns(data, feature_cols)                                  # Normalize features
-            predict_data_list.append(pipeline_data.load_data(file_path))
-        
+            target = pipeline_data.load_data(file_path).iloc[:, 4]
+            predict_data_list.append((data, target))
+
+        train_dataloader = utils_model.get_dataloader(train_data_list, batch_size=args.train_batch_size, shuffle=False)
+        predict_dataloader = utils_model.get_dataloader(predict_data_list, batch_size=args.predict_batch_size, shuffle=False)
+
+        # Train model
+        model = utils_model.mlp_model(input_dim=len(feature_cols), hidden_dim=64, output_dim=1)
+        model = pipeline_train.train_model(model, train_dataloader, logger)
+        # Make predictions
+        predictions = pipeline_predict.make_predictions(model, predict_dataloader, logger)
+        print(predictions)
+        logger.info(f"Predictions for period {i+1}:\n{predictions.head()}")
 
     
     # data = pipeline_data.load_data('data/input_data.feather')

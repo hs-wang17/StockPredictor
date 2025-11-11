@@ -2,27 +2,57 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 import numpy as np
+import tqdm
 
-# 假设数据已经加载到df中，数据中有"date"、"stock_code"、"features"和"label"
 class StockDataset(Dataset):
-    def __init__(self, data: pd.DataFrame, feature_columns: list, label_column: str):
+    def __init__(self, data_list):
         """
         Args:
-            data (pd.DataFrame): The dataframe containing stock data
+            data_list (list): A list of tuples where each tuple is (data, target)
             feature_columns (list): List of columns to use as features
             label_column (str): The column to use as the target (label)
         """
-        self.data = data
-        self.features = data[feature_columns].values
-        self.labels = data[label_column].values
+        self.data_list = data_list
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data_list)
 
     def __getitem__(self, idx):
-        return torch.tensor(self.features[idx], dtype=torch.float32), torch.tensor(self.labels[idx], dtype=torch.float32)
+        data, target = self.data_list[idx]
+        stock_code = torch.tensor(data.iloc[:, 0].astype(int).values, dtype=torch.int64)
+        features = torch.tensor(data.iloc[:, 1:].values, dtype=torch.float32)
+        label = torch.tensor(target.values, dtype=torch.float32)
+        return stock_code, features, label
 
-# 假设数据已经加载到df中，数据中有"date"、"stock_code"、"features"和"label"
-def get_dataloader(df: pd.DataFrame, feature_columns: list, label_column: str, batch_size: int):
-    dataset = StockDataset(df, feature_columns, label_column)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=True)
+def get_dataloader(train_data_list, batch_size: int = 64, shuffle: bool = False) -> DataLoader:
+    """
+    Function to generate a DataLoader from a list of (data, target) tuples.
+    """
+    dataset = StockDataset(train_data_list)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+def mlp_model(input_dim: int, hidden_dim: int, output_dim: int) -> torch.nn.Module:
+    """
+    Define a simple MLP model.
+    """
+    model = torch.nn.Sequential(
+        torch.nn.Linear(input_dim, hidden_dim),
+        torch.nn.ReLU(),
+        torch.nn.Linear(hidden_dim, output_dim)
+    )
+    return model
+
+def save_model(model: torch.nn.Module, file_path: str):
+    """
+    Save the trained model to a file.
+    """
+    torch.save(model.state_dict(), file_path)
+
+def load_model(model: torch.nn.Module, file_path: str) -> torch.nn.Module:
+    """
+    Load a trained model from a file.
+    """
+    model.load_state_dict(torch.load(file_path))
+    model.eval()
+    return model
+
