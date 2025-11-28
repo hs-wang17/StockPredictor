@@ -77,6 +77,10 @@ def run():
         train_data_list, predict_data_list = [], []
         filter_index = pipeline_filter.read_filter_index(file_path=args.filter_file_path, period_index=i)
 
+        logger.info("Loading training data for period normalization...")
+        all_train_data = []
+        all_train_targets = []
+
         for date in tqdm.tqdm(train_date_list, desc="Loading training data"):
             file_path = os.path.join(args.data_dir, f"{date}.fea")
             data = pipeline_data.load_data(file_path)
@@ -89,18 +93,60 @@ def run():
                 feature_cols = data.columns
             data = pd.concat([data.index.to_frame(name="code"), data[feature_cols]], axis=1).reset_index(drop=True)  # Keep only stock_code and feature columns
             data = pipeline_data.ensure_data_types(data)  # Ensure correct data types
-            data = pipeline_data.fill_missing_values(data, fill_value=0.0)  # Handle missing values
-            data = pipeline_data.normalize_columns(data, feature_cols)  # Normalize features
-            data = pipeline_data.fill_missing_values(data, fill_value=0.0)  # Handle missing values
+            data = pipeline_data.fill_inf_with_nan(data)  # Handle infinite values
+
+            # Store data for later normalization
+            all_train_data.append((data, date))
+            all_train_targets.append(target)
+
+        # Calculate normalization parameters for the entire training period
+        logger.info("Calculating normalization parameters for the entire training period...")
+        combined_train_data = pd.concat([data for data, _ in all_train_data], ignore_index=True)
+        normalize_params = {}
+        for col in feature_cols:
+            q_low = combined_train_data[col].quantile(0.01)
+            q_high = combined_train_data[col].quantile(0.99)
+            combined_train_data[col] = combined_train_data[col].clip(q_low, q_high, axis=1)
+            mean = combined_train_data[col].mean()
+            std = combined_train_data[col].std(ddof=1)  # use the number of all observations (including NaN)
+            # Store parameters
+            normalize_params[col] = {"quantile_low": q_low, "quantile_high": q_high, "mean": mean, "std": std}
+
+        # Save normalization parameters
+        normalize_params_path = os.path.join(args.model_save_dir, f"normalize_params_period_{i}.fea")
+        pd.DataFrame(normalize_params).to_feather(normalize_params_path)
+        logger.info(f"Normalization parameters saved to {normalize_params_path}")
+
+        # Apply normalization using the calculated parameters
+        logger.info("Applying normalization to training data...")
+        for (data, date), target in zip(all_train_data, all_train_targets):
+            # Apply normalization using saved parameters
+            for col in feature_cols:
+                q_low = normalize_params[col]["quantile_low"]
+                q_high = normalize_params[col]["quantile_high"]
+                mean = normalize_params[col]["mean"]
+                std = normalize_params[col]["std"]
+                # Winsorization
+                data[col] = data[col].clip(q_low, q_high, axis=1)
+                # Standardization
+                data[col] = (data[col] - mean) / std
+                # Fill missing values
+                data[col] = data[col].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
             data = pd.concat([pd.DataFrame({"date": [date] * len(data)}), data], axis=1)
-            # target = label.loc[date]
-            # valid_codes = target.dropna().index
-            # target = target.loc[valid_codes]
-            # data = data[data["code"].isin(valid_codes)].reset_index(drop=True)
-            # data = data.set_index("code").loc[target.index].reset_index()
-            # target = pipeline_data.fill_missing_values(target, fill_value=0.0)  # Handle missing values in target
             train_data_list.append((data, target))
 
+        # # Load normalization parameters from training period (needed when training and prediction are separated)
+        # normalize_params_path = os.path.join(args.model_save_dir, f"normalize_params_period_{i}.fea")
+        # if os.path.exists(normalize_params_path):
+        #     normalize_params = pd.read_feather(normalize_params_path).to_dict()
+        #     logger.info(f"Loaded normalization parameters from {normalize_params_path}")
+        # else:
+        #     logger.error(f"Normalization parameters file not found: {normalize_params_path}")
+        #     raise FileNotFoundError(f"Normalization parameters file not found: {normalize_params_path}")
+
+        # Process prediction data using training period's normalization parameters
+        logger.info("Loading and normalizing prediction data...")
         for date in tqdm.tqdm(predict_date_list, desc="Loading prediction data"):
             file_path = os.path.join(args.data_dir, f"{date}.fea")
             data = pipeline_data.load_data(file_path)
@@ -113,16 +159,22 @@ def run():
                 feature_cols = data.columns
             data = pd.concat([data.index.to_frame(name="code"), data[feature_cols]], axis=1).reset_index(drop=True)  # Keep only stock_code and feature columns
             data = pipeline_data.ensure_data_types(data)  # Ensure correct data types
-            data = pipeline_data.fill_missing_values(data, fill_value=0.0)  # Handle missing values
-            data = pipeline_data.normalize_columns(data, feature_cols)  # Normalize features
-            data = pipeline_data.fill_missing_values(data, fill_value=0.0)  # Handle missing values
+            data = pipeline_data.fill_inf_with_nan(data)  # Handle infinite values
+
+            # Apply normalization using training period's parameters
+            for col in feature_cols:
+                q_low = normalize_params[col]["quantile_low"]
+                q_high = normalize_params[col]["quantile_high"]
+                mean = normalize_params[col]["mean"]
+                std = normalize_params[col]["std"]
+                # Winsorization
+                data[col] = data[col].clip(q_low, q_high, axis=1)
+                # Standardization
+                data[col] = (data[col] - mean) / std
+                # Fill missing values
+                data[col] = data[col].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
             data = pd.concat([pd.DataFrame({"date": [date] * len(data)}), data], axis=1)
-            # target = label.loc[date]
-            # valid_codes = target.dropna().index
-            # target = target.loc[valid_codes]
-            # data = data[data["code"].isin(valid_codes)].reset_index(drop=True)
-            # data = data.set_index("code").loc[target.index].reset_index()
-            # target = pipeline_data.fill_missing_values(target, fill_value=0.0)  # Handle missing values in target
             predict_data_list.append((data, target))
 
         train_dataset, train_dataloader = utils_dataloader.get_dataloader(train_data_list, batch_size=args.train_batch_size, shuffle=False)

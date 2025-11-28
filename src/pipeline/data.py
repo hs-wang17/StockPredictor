@@ -20,6 +20,11 @@ def drop_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     return df.dropna()
 
 
+def fill_inf_with_nan(df: pd.DataFrame) -> pd.DataFrame:
+    """Fill missing values in the DataFrame with NaN."""
+    return df.replace([np.inf, -np.inf], np.nan)
+
+
 def fill_missing_values(df: pd.DataFrame, fill_value: float = 0.0) -> pd.DataFrame:
     """Fill missing values in the DataFrame with a specified fill value."""
     return df.fillna(fill_value).replace([np.inf, -np.inf], fill_value)
