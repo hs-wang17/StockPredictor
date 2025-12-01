@@ -174,10 +174,10 @@ def train_neural_network_model_parallel(
                 h = histories[rank]
                 log_dict.update(
                     {
-                        f"train_loss/fold_{rank+1}": h["train_loss"][epoch],
-                        f"val_loss/fold_{rank+1}": h["val_loss"][epoch],
-                        f"grad_norm/fold_{rank+1}": h["grad_norm"][epoch],
-                        f"lr/fold_{rank+1}": h["lr"][epoch],
+                        f"train_loss/period_{period_index}_fold_{rank+1}": h["train_loss"][epoch],
+                        f"val_loss/period_{period_index}_fold_{rank+1}": h["val_loss"][epoch],
+                        f"grad_norm/period_{period_index}_fold_{rank+1}": h["grad_norm"][epoch],
+                        f"lr/period_{period_index}_fold_{rank+1}": h["lr"][epoch],
                     }
                 )
             swanlab.log(log_dict, step=epoch + 1)

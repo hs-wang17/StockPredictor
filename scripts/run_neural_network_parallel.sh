@@ -10,7 +10,7 @@
 : "${BEGIN_PERIOD:=0}"
 : "${DATA_DIR:=/home/user0/mydata/concat_daily_factor_with_label}"
 : "${DEVICE:=cuda:0}"
-: "${END_DATE:=20251015}"
+: "${END_DATE:=20251024}"
 : "${EPOCHS:=200}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
 : "${GAP_DAYS:=20}"

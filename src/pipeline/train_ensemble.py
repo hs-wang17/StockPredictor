@@ -6,12 +6,11 @@ from sklearn.model_selection import train_test_split
 import lightgbm as lgb
 import time
 import joblib
-from datetime import datetime
+
 
 def train_lightgbm_model(
     model: lgb.LGBMRegressor,
-    X: pd.DataFrame,
-    y: pd.Series,
+    train_df: pd.DataFrame,
     logger,
     model_save_dir: str,
     period_index: int,
@@ -20,28 +19,28 @@ def train_lightgbm_model(
     valid_size: float = 0.1,
     verbose_eval: int = 50,
     random_state: int = 42,
-    use_gpu: bool = True
+    use_gpu: bool = True,
+    timestamp: str = None,
+    feature_cols: list = None,
 ) -> lgb.LGBMRegressor:
     """
     训练 LightGBM 模型并保存。
     - X, y: 整个训练集（DataFrame / Series），会随机划出一小部分做验证（若 valid_size=0 则不做验证）。
     - 返回训练好的模型（sklearn API wrapper）。
     """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     start_ts = time.time()
+    model_save_dir = os.path.join(model_save_dir, f"{project_name}_{timestamp}")
     os.makedirs(model_save_dir, exist_ok=True)
-    device_type = "gpu" if use_gpu else "cpu"
 
+    X, y = train_df.iloc[:, :-1], train_df["target"]
     if valid_size > 0 and len(X) > 0:
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=valid_size, random_state=random_state, shuffle=True
-        )
-        eval_set = [(X_val, y_val)]
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=valid_size, random_state=random_state, shuffle=True)
+        eval_set = [(X_val[feature_cols], y_val)]
     else:
         X_train, y_train = X, y
         eval_set = None
 
-    logger.info(f"Training LightGBM: n_train={len(X_train)}, n_val={len(X_val) if valid_size>0 else 0}")
+    logger.info(f"Training LightGBM: n_train={len(X_train)}, n_val={len(X_val) if valid_size > 0 else 0}")
 
     # fit with early stopping if validation set provided
     fit_kwargs = {}
@@ -59,9 +58,9 @@ def train_lightgbm_model(
     if callbacks:
         fit_kwargs["callbacks"] = callbacks
 
-    model.fit(X_train, y_train, **fit_kwargs)
+    model.fit(X_train[feature_cols], y_train, **fit_kwargs)
 
-    model_file = os.path.join(model_save_dir, f"{project_name}_{timestamp}_period{period_index}_lgbm.pkl")
+    model_file = os.path.join(model_save_dir, f"{project_name}_{timestamp}_period_{period_index}_lgbm.pkl")
     joblib.dump(model, model_file)
     logger.info(f"Model saved to {model_file} (fit time {time.time()-start_ts:.1f}s)")
 
