@@ -13,6 +13,7 @@
 : "${END_DATE:=20251024}"
 : "${EPOCHS:=200}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
+: "${FROM_START:=False}"
 : "${GAP_DAYS:=20}"
 : "${HIDDEN_DIM:=64}"
 : "${K_FOLDS:=4}"
@@ -44,6 +45,7 @@ python /home/user0/project/predictor/src/main_neural_network_parallel.py \
     --end_date "${END_DATE}" \
     --epochs "${EPOCHS}" \
     --filter_file_path "${FILTER_FILE_PATH}" \
+    --from_start "${FROM_START}" \
     --gap_days "${GAP_DAYS}" \
     --hidden_dim "${HIDDEN_DIM}" \
     --k_folds "${K_FOLDS}" \
