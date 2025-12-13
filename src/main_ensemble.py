@@ -31,6 +31,7 @@ def run():
         predict_period_days=args.predict_period_days,
         slide_period_days=args.slide_period_days,
         gap_days=args.gap_days,
+        from_start=args.from_start,
     )  # Generate train and predict date lists for each period
 
     logger.info(f"Number of periods: {num_periods}")
@@ -74,7 +75,7 @@ def run():
 
         # Loading and preprocessing training data
         logger.info("Loading and normalizing training data...")
-        for date in tqdm.tqdm(train_date_list[:100], desc="Loading training data"):
+        for date in tqdm.tqdm(train_date_list, desc="Loading training data"):
             file_path = os.path.join(args.data_dir, f"{date}.fea")
             data = pipeline_data.load_data(file_path)
             target = data["label"]
@@ -97,7 +98,7 @@ def run():
 
         # Loading and normalizing prediction data
         logger.info("Loading and normalizing prediction data...")
-        for date in tqdm.tqdm(predict_date_list[:100], desc="Loading prediction data"):
+        for date in tqdm.tqdm(predict_date_list, desc="Loading prediction data"):
             file_path = os.path.join(args.data_dir, f"{date}.fea")
             data = pipeline_data.load_data(file_path)
             target = data["label"]
