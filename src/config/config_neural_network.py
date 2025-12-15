@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument("--from_start", type=bool, default=False, help="Whether to train the model from scratch (default: False)")
     parser.add_argument("--gap_days", type=int, default=20, help="Days between end of training and start of prediction")
     parser.add_argument("--hidden_dim", type=int, default=64, help="Hidden dimension size for the neural network (default: 64)")
+    parser.add_argument("--inverse", type=bool, default=True, help="Whether to invert the training and prediction period (default: False)")
     parser.add_argument("--k_folds", type=int, default=4, help="Number of folds for K-fold cross-validation (default: 4)")
     # parser.add_argument("--label_file_path", type=str, default="/home/user0/mydata/label.fea", help="Path to label file")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate for training (default: 1e-4)")

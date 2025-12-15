@@ -16,6 +16,7 @@
 : "${FROM_START:=True}"
 : "${GAP_DAYS:=20}"
 : "${HIDDEN_DIM:=64}"
+: "${INVERSE:=True}"
 : "${K_FOLDS:=4}"
 # : "${LABEL_FILE_PATH:=/home/user0/mydata/label.fea}"
 : "${LEARNING_RATE:=1e-4}"
@@ -48,6 +49,7 @@ python /home/user0/project/predictor/src/main_neural_network_parallel.py \
     --from_start "${FROM_START}" \
     --gap_days "${GAP_DAYS}" \
     --hidden_dim "${HIDDEN_DIM}" \
+    --inverse "${INVERSE}" \
     --k_folds "${K_FOLDS}" \
     --learning_rate "${LEARNING_RATE}" \
     --lr_decay_gamma "${LR_DECAY_GAMMA}" \

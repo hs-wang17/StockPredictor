@@ -32,6 +32,7 @@ def run():
         slide_period_days=args.slide_period_days,
         gap_days=args.gap_days,
         from_start=args.from_start,
+        inverse=args.inverse,
     )  # Generate train and predict date lists for each period
 
     logger.info(f"Number of periods: {num_periods}")

@@ -16,6 +16,7 @@
 : "${FROM_START:=False}"
 : "${GAP_DAYS:=20}"
 : "${HIDDEN_DIM:=64}"
+: "${INVERSE:=True}"
 : "${K_FOLDS:=4}"
 # : "${LABEL_FILE_PATH:=/home/user0/mydata/label.fea}"
 : "${LEARNING_RATE:=1e-4}"
@@ -30,7 +31,7 @@
 : "${PROJECT_NAME:=StockPredictor}"
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
-: "${START_DATE:=20210101}"
+: "${START_DATE:=20180401}"
 : "${TRAIN_BATCH_SIZE:=1}"
 : "${TRAIN_PERIOD_DAYS:=720}"
 : "${USE_SWANLAB:=True}"
@@ -48,6 +49,7 @@ python /home/user0/project/predictor/src/main_neural_network_parallel.py \
     --from_start "${FROM_START}" \
     --gap_days "${GAP_DAYS}" \
     --hidden_dim "${HIDDEN_DIM}" \
+    --inverse "${INVERSE}" \
     --k_folds "${K_FOLDS}" \
     --learning_rate "${LEARNING_RATE}" \
     --lr_decay_gamma "${LR_DECAY_GAMMA}" \
