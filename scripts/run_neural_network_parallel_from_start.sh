@@ -8,7 +8,7 @@
 # Default parameters (can be overridden by ENV variables)
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
-: "${DATA_DIR:=/home/user0/mydata/concat_daily_factor_with_label}"
+: "${DATA_DIR:=/home/haris/mydata/concat_daily_factor_with_label}"
 : "${DEVICE:=cuda:0}"
 : "${END_DATE:=20251024}"
 : "${EPOCHS:=200}"
@@ -16,17 +16,18 @@
 : "${FROM_START:=True}"
 : "${GAP_DAYS:=20}"
 : "${HIDDEN_DIM:=64}"
+: "${INVERSE:=True}"
 : "${K_FOLDS:=4}"
-# : "${LABEL_FILE_PATH:=/home/user0/mydata/label.fea}"
+# : "${LABEL_FILE_PATH:=/home/haris/mydata/label.fea}"
 : "${LEARNING_RATE:=1e-4}"
 : "${LR_DECAY_GAMMA:=0.99}"
-: "${LOG_DIR:=/home/user0/results/logs}"
+: "${LOG_DIR:=/home/haris/results/logs}"
 : "${MODEL_TYPE:=resnet}"
-: "${MODEL_SAVE_DIR:=/home/user0/results/models}"
+: "${MODEL_SAVE_DIR:=/home/haris/results/models}"
 : "${NUM_PERIODS:=}"
 : "${PREDICT_BATCH_SIZE:=64}"
 : "${PREDICT_PERIOD_DAYS:=60}"
-: "${PREDICTIONS_SAVE_DIR:=/home/user0/results/predictions}"
+: "${PREDICTIONS_SAVE_DIR:=/home/haris/results/predictions}"
 : "${PROJECT_NAME:=StockPredictor}"
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
@@ -38,7 +39,7 @@
 # -----------------------------
 # Run Python script
 # -----------------------------
-python /home/user0/project/predictor/src/main_neural_network_parallel.py \
+python /home/haris/project/predictor/src/main_neural_network_parallel.py \
     --begin_period "${BEGIN_PERIOD}" \
     --data_dir "${DATA_DIR}" \
     --device "${DEVICE}" \
@@ -48,6 +49,7 @@ python /home/user0/project/predictor/src/main_neural_network_parallel.py \
     --from_start "${FROM_START}" \
     --gap_days "${GAP_DAYS}" \
     --hidden_dim "${HIDDEN_DIM}" \
+    --inverse "${INVERSE}" \
     --k_folds "${K_FOLDS}" \
     --learning_rate "${LEARNING_RATE}" \
     --lr_decay_gamma "${LR_DECAY_GAMMA}" \
