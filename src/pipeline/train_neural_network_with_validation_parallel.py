@@ -8,6 +8,53 @@ from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import KFold
 
 
+def pad_collate_fn(batch):
+    dates, stock_codes, features, labels = zip(*batch)
+
+    # features: [num_stocks_i, feature_dim]
+    num_stocks = [f.shape[0] for f in features]
+    max_stocks = max(num_stocks)
+    feature_dim = features[0].shape[1]
+
+    padded_features = []
+    padded_labels = []
+    stock_masks = []
+
+    for f, y in zip(features, labels):
+        n = f.shape[0]
+        pad_len = max_stocks - n
+
+        # --- features ---
+        if pad_len > 0:
+            f_pad = torch.zeros(pad_len, feature_dim, dtype=f.dtype, device=f.device)
+            f_padded = torch.cat([f, f_pad], dim=0)
+        else:
+            f_padded = f
+
+        # --- labels ---
+        if pad_len > 0:
+            y_pad = torch.zeros(pad_len, dtype=y.dtype, device=y.device)
+            y_padded = torch.cat([y, y_pad], dim=0)
+        else:
+            y_padded = y
+
+        # --- mask ---
+        mask = torch.zeros(max_stocks, dtype=torch.bool, device=f.device)
+        mask[:n] = True
+
+        padded_features.append(f_padded)
+        padded_labels.append(y_padded)
+        stock_masks.append(mask)
+
+    return (
+        list(dates),
+        list(stock_codes),
+        torch.stack(padded_features, dim=0),  # (B, max_stocks, feature_dim)
+        torch.stack(padded_labels, dim=0),  # (B, max_stocks)
+        torch.stack(stock_masks, dim=0),  # (B, max_stocks)
+    )
+
+
 def _train_single_fold(rank: int, model, dataset, train_idx, val_idx, args: dict):
     """子进程：只训练 + 收集每轮指标，返回 best model + 完整日志历史"""
     torch.cuda.set_device(rank)
@@ -15,11 +62,11 @@ def _train_single_fold(rank: int, model, dataset, train_idx, val_idx, args: dict
 
     train_subset = Subset(dataset, train_idx)
     val_subset = Subset(dataset, val_idx)
-    train_loader = DataLoader(train_subset, batch_size=args["batch_size"], shuffle=True, drop_last=False)
-    val_loader = DataLoader(val_subset, batch_size=args["batch_size"], shuffle=False)
+    train_loader = DataLoader(train_subset, batch_size=args["batch_size"], shuffle=True, drop_last=False, collate_fn=pad_collate_fn)
+    val_loader = DataLoader(val_subset, batch_size=args["batch_size"], shuffle=False, drop_last=False, collate_fn=pad_collate_fn)
 
     model.to(device)
-    criterion = torch.nn.MSELoss()
+    criterion = torch.nn.MSELoss(reduction="none")
     optimizer = torch.optim.Adam(model.parameters(), lr=args["learning_rate"])
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args["lr_decay_gamma"])
 
@@ -30,31 +77,38 @@ def _train_single_fold(rank: int, model, dataset, train_idx, val_idx, args: dict
     history = {"train_loss": [], "val_loss": [], "grad_norm": [], "lr": []}
 
     for epoch in range(1, args["epochs"] + 1):
+        # training
         model.train()
         train_loss = 0.0
         grad_norms = []
 
-        for date, stock_code, features, labels in train_loader:
-            features, labels = features.to(device), labels.to(device)
+        for date, stock_code, features, labels, mask in train_loader:
+            features = features.to(device)
+            labels = labels.to(device)
+            mask = mask.to(device)
             optimizer.zero_grad()
-            outputs = model(features)
-            loss = criterion(outputs.squeeze(), labels.squeeze())
+            outputs = model(features).squeeze(-1)  # (B, max_stocks)
+            loss_raw = criterion(outputs, labels)  # (B, max_stocks)
+            loss = (loss_raw * mask).sum() / mask.sum()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1000.0)
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1000.0)
             optimizer.step()
             train_loss += loss.item()
-            grad_norms.append(torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1000.0).item())
+            grad_norms.append(grad_norm.item())
 
         scheduler.step()
 
         # validation
         model.eval()
         val_loss = 0.0
-        with torch.no_grad():
-            for date, stock_code, features, labels in val_loader:
-                features, labels = features.to(device), labels.to(device)
-                outputs = model(features)
-                val_loss += criterion(outputs.squeeze(), labels.squeeze()).item()
+        for date, stock_code, features, labels, mask in val_loader:
+            features = features.to(device)
+            labels = labels.to(device)
+            mask = mask.to(device)
+            outputs = model(features).squeeze(-1)
+            loss_raw = criterion(outputs, labels)
+            loss = (loss_raw * mask).sum() / mask.sum()
+            val_loss += loss.item()
 
         avg_train_loss = train_loss / len(train_loader)
         avg_val_loss = val_loss / len(val_loader)
@@ -82,14 +136,15 @@ def _train_single_fold(rank: int, model, dataset, train_idx, val_idx, args: dict
             best_model_path = os.path.join(
                 fold_model_dir, f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_epoch{epoch}.pt"
             )
-        torch.save(best_model, best_model_path)
 
-        # # 保存检查点
-        # if args["save_model"] and epoch % args["model_save_frequency"] == 0:
-        #     fold_model_dir = os.path.join(args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model")
-        #     os.makedirs(fold_model_dir, exist_ok=True)
-        #     model_path = os.path.join(fold_model_dir, f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_epoch{epoch}.pt")
-        #     torch.save(model, model_path)
+    torch.save(best_model, best_model_path)
+
+    # # 保存检查点
+    # if args["save_model"] and epoch % args["model_save_frequency"] == 0:
+    #     fold_model_dir = os.path.join(args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model")
+    #     os.makedirs(fold_model_dir, exist_ok=True)
+    #     model_path = os.path.join(fold_model_dir, f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_epoch{epoch}.pt")
+    #     torch.save(model, model_path)
 
     return best_model_path, best_val_loss, history
 
@@ -115,7 +170,7 @@ def train_neural_network_model_parallel(
     k_folds: int = 4,
     lr_decay_gamma: float = 0.99,
     batch_size: int = 32,
-    timestamp: str = None,
+    timestamp: str = "None",
 ):
     assert k_folds == 4
     assert torch.cuda.device_count() >= 4
