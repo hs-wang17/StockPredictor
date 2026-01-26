@@ -9,33 +9,34 @@
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
 : "${CRITERION:=mse}"
-: "${DATA_DIR:=/home/haris/mydata_20260109/concat_daily_factor_with_label_vector}"
+: "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20251231/concat_daily_factor_with_label}"
 : "${DEVICE:=cuda:0}"
-: "${END_DATE:=20251208}"
-: "${EPOCHS:=200}"
+: "${END_DATE:=20301231}"
+: "${EPOCHS:=80}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
 : "${FROM_START:=False}"
 : "${GAP_DAYS:=20}"
 : "${HIDDEN_DIM:=64}"
-: "${INVERSE:=False}"
+: "${INVERSE:=True}"
 : "${K_FOLDS:=4}"
 # : "${LABEL_FILE_PATH:=/home/haris/mydata/label.fea}"
 : "${LEARNING_RATE:=0.0001}"
 : "${LR_DECAY_GAMMA:=0.99}"
 : "${LOG_DIR:=/home/haris/results/logs}"
-: "${MODEL_TYPE:=resnet_backbone}"
+: "${MODEL_TYPE:=resnet}"
 : "${MODEL_SAVE_DIR:=/home/haris/results/models}"
 : "${NUM_PERIODS:=}"
 : "${PREDICT_BATCH_SIZE:=64}"
-: "${PREDICT_PERIOD_DAYS:=5}"
+: "${PREDICT_PERIOD_DAYS:=60}"
 : "${PREDICTIONS_SAVE_DIR:=/home/haris/results/predictions}"
 : "${PROJECT_NAME:=StockPredictor}"
 : "${REMOVE_ABNORMAL:=False}"
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
 : "${START_DATE:=20180401}"
+: "${TRADE_DATE_PATH:=/home/haris/raid0/shared/haris/mydata_20251231/trade_date.fea}"
 : "${TRAIN_BATCH_SIZE:=1}"
-: "${TRAIN_PERIOD_DAYS:=5}"
+: "${TRAIN_PERIOD_DAYS:=720}"
 : "${USE_SWANLAB:=True}"
 
 # -----------------------------
@@ -67,6 +68,7 @@ python /home/haris/project/predictor/src/main_neural_network_parallel_process_da
     --model_save_frequency "${MODEL_SAVE_FREQUENCY}" \
     --slide_period_days "${SLIDE_PERIOD_DAYS}" \
     --start_date "${START_DATE}" \
+    --trade_date_path "${TRADE_DATE_PATH}" \
     --train_batch_size "${TRAIN_BATCH_SIZE}" \
     --train_period_days "${TRAIN_PERIOD_DAYS}" \
     --use_swanlab "${USE_SWANLAB}" \

@@ -23,7 +23,7 @@ def run():
     # Loading and normalizing prediction data
     logger.info("Loading and normalizing prediction data...")
     predict_data_list, _ = utils_process_data_parallel.key_parallel(
-        predict_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io
+        predict_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io, type="predict"
     )
 
     predict_dataset, _ = utils_dataloader.get_dataloader_predict(predict_data_list, batch_size=args.predict_batch_size, shuffle=False)

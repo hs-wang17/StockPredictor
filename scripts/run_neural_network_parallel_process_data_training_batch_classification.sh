@@ -8,39 +8,43 @@
 # Default parameters (can be overridden by ENV variables)
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
-: "${DATA_DIR:=/home/haris/mydata/concat_daily_factor}"
+: "${CRITERION:=mse}"
+: "${DATA_DIR:=/home/haris/mydata_20260116/concat_daily_factor_with_label}"
 : "${DEVICE:=cuda:0}"
-: "${END_DATE:=}"
+: "${END_DATE:=20251208}"
 : "${EPOCHS:=200}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
 : "${FROM_START:=False}"
 : "${GAP_DAYS:=20}"
 : "${HIDDEN_DIM:=64}"
-: "${INVERSE:=False}"
+: "${INVERSE:=True}"
 : "${K_FOLDS:=4}"
 # : "${LABEL_FILE_PATH:=/home/haris/mydata/label.fea}"
-: "${LEARNING_RATE:=1e-4}"
+: "${LEARNING_RATE:=0.0001}"
 : "${LR_DECAY_GAMMA:=0.99}"
 : "${LOG_DIR:=/home/haris/results/logs}"
-: "${MODEL_TYPE:=resnet}"
-: "${MODEL_SAVE_DIR:=/home/haris/mymodel/models/StockPredictor_20251225}"
+: "${MODEL_TYPE:=mlp_classification}"
+: "${MODEL_SAVE_DIR:=/home/haris/results/models}"
 : "${NUM_PERIODS:=}"
-: "${PREDICT_BATCH_SIZE:=0}"
-: "${PREDICT_PERIOD_DAYS:=0}"
-: "${PREDICTIONS_SAVE_DIR:=/home/haris/mymodel/predictions/StockPredictor_20251225}"
-: "${PROJECT_NAME:=StockPredictor_20251225}"
-: "${MODEL_SAVE_FREQUENCY:=1}"
-: "${SLIDE_PERIOD_DAYS:=0}"
-: "${START_DATE:=20251024}"
+: "${PREDICT_BATCH_SIZE:=64}"
+: "${PREDICT_PERIOD_DAYS:=60}"
+: "${PREDICTIONS_SAVE_DIR:=/home/haris/results/predictions}"
+: "${PROJECT_NAME:=StockPredictor}"
+: "${REMOVE_ABNORMAL:=False}"
+: "${MODEL_SAVE_FREQUENCY:=20}"
+: "${SLIDE_PERIOD_DAYS:=60}"
+: "${START_DATE:=20180401}"
+: "${TRADE_DATE_PATH:=/home/haris/mydata_20260116/trade_date.fea}"
 : "${TRAIN_BATCH_SIZE:=1}"
 : "${TRAIN_PERIOD_DAYS:=720}"
-: "${USE_SWANLAB:=False}"
+: "${USE_SWANLAB:=True}"
 
 # -----------------------------
 # Run Python script
 # -----------------------------
-/home/haris/miniconda3/envs/myenv/bin/python /home/haris/project/predictor/src/update_neural_network_parallel_predict.py \
+python /home/haris/project/predictor/src/main_neural_network_parallel_process_data_training_batch.py \
     --begin_period "${BEGIN_PERIOD}" \
+    --criterion "${CRITERION}" \
     --data_dir "${DATA_DIR}" \
     --device "${DEVICE}" \
     --end_date "${END_DATE}" \
@@ -60,18 +64,15 @@
     --predict_period_days "${PREDICT_PERIOD_DAYS}" \
     --predictions_save_dir "${PREDICTIONS_SAVE_DIR}" \
     --project_name "${PROJECT_NAME}" \
+    --remove_abnormal "${REMOVE_ABNORMAL}" \
     --model_save_frequency "${MODEL_SAVE_FREQUENCY}" \
     --slide_period_days "${SLIDE_PERIOD_DAYS}" \
     --start_date "${START_DATE}" \
+    --trade_date_path "${TRADE_DATE_PATH}" \
     --train_batch_size "${TRAIN_BATCH_SIZE}" \
     --train_period_days "${TRAIN_PERIOD_DAYS}" \
     --use_swanlab "${USE_SWANLAB}" \
     ${NUM_PERIODS:+--num_periods "${NUM_PERIODS}"}
-
-# -----------------------------
-# Merge prediction data
-# -----------------------------
-/home/haris/miniconda3/envs/myenv/bin/python /home/haris/mymodel/merge_data_20251225.py
 
 # -----------------------------
 # Finish message

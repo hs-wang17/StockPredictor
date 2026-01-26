@@ -11,20 +11,34 @@ import tqdm
 
 def fast_collate_fn(batch):
     dates, stock_codes, features, labels, masks = zip(*batch)
-    return (torch.stack(dates, dim=0), torch.stack(stock_codes, dim=0), torch.stack(features, dim=0), torch.stack(labels, dim=0), torch.stack(masks, dim=0))
+    return (torch.stack(dates, dim=0),
+            torch.stack(stock_codes, dim=0),
+            torch.stack(features, dim=0),
+            torch.stack(labels, dim=0),
+            torch.stack(masks, dim=0))
 
 
-def _train_single_fold(rank: int, model_param_dict, dataset, train_idx, val_idx, args: dict):
+def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, args: dict):
     """子进程：只训练 + 收集每轮指标，返回 best model + 完整日志历史"""
     os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
     torch.cuda.set_device(0)
     device = "cuda:0"
 
-    train_subset = Subset(dataset, train_idx)
-    val_subset = Subset(dataset, val_idx)
-    train_loader = DataLoader(train_subset, batch_size=args["batch_size"], shuffle=True, collate_fn=fast_collate_fn, pin_memory=True)
-    val_loader = DataLoader(val_subset, batch_size=args["batch_size"], shuffle=False, collate_fn=fast_collate_fn, pin_memory=True)
-
+    train_loader = DataLoader(
+        train_subset, 
+        batch_size=args["batch_size"], 
+        shuffle=True, 
+        collate_fn=fast_collate_fn, 
+        pin_memory=True
+    )
+    val_loader = DataLoader(
+        val_subset, 
+        batch_size=args["batch_size"], 
+        shuffle=False, 
+        collate_fn=fast_collate_fn, 
+        pin_memory=True
+    )
+    
     model = utils_neural_network_model.neural_network_model(
         input_dim=model_param_dict["input_dim"],
         hidden_dim=model_param_dict["hidden_dim"],
@@ -33,7 +47,9 @@ def _train_single_fold(rank: int, model_param_dict, dataset, train_idx, val_idx,
     )
     model.to(device)
 
-    if args["criterion"] == "mae":
+    if model_param_dict["model_type"] == "mlp_classification":
+        criterion = torch.nn.BCELoss(reduction="none")
+    elif args["criterion"] == "mae":
         criterion = torch.nn.L1Loss(reduction="none")
     elif args["criterion"] == "huber":
         criterion = torch.nn.SmoothL1Loss(reduction="none")
@@ -48,7 +64,8 @@ def _train_single_fold(rank: int, model_param_dict, dataset, train_idx, val_idx,
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args["lr_decay_gamma"])
 
     best_val_loss = float("inf")
-    best_model = None
+    best_model_state = None
+    best_epoch = -1
 
     # 收集每轮的日志（主进程统一上传 swanlab）
     history = {"train_loss": [], "val_loss": [], "grad_norm": [], "lr": []}
@@ -80,7 +97,7 @@ def _train_single_fold(rank: int, model_param_dict, dataset, train_idx, val_idx,
             optimizer.step()
             train_loss += loss.item()
         scheduler.step()
-
+        
         # validation
         with torch.no_grad():
             model.eval()
@@ -103,7 +120,7 @@ def _train_single_fold(rank: int, model_param_dict, dataset, train_idx, val_idx,
 
         avg_train_loss = train_loss / len(train_loader)
         avg_val_loss = val_loss / len(val_loader)
-
+        
         # 记录到 history
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
@@ -115,23 +132,23 @@ def _train_single_fold(rank: int, model_param_dict, dataset, train_idx, val_idx,
         # 更新最佳模型
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            fold_model_dir = os.path.join(args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model")
-            os.makedirs(fold_model_dir, exist_ok=True)
-            best_model = model
-            best_model_path = os.path.join(
-                fold_model_dir, f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_epoch{epoch}.pt"
-            )
-
-    torch.save(best_model, best_model_path)
+            best_model_state = {k: v.cpu() for k, v in model.state_dict().items()}
+            best_epoch = epoch
+            
+    fold_model_dir = os.path.join(args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model")
+    os.makedirs(fold_model_dir, exist_ok=True)
+    best_model_path = os.path.join(fold_model_dir, f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_epoch{best_epoch}.pt")
+    model.load_state_dict(best_model_state)
+    torch.save(model, best_model_path)
 
     return best_model_path, best_val_loss, history
 
 
-def _worker(rank: int, queue: mp.Queue, model_param_dict, dataset, train_idx, val_idx, args: dict):
+def _worker(rank: int, queue: mp.Queue, model_param_dict, train_subset, val_subset, args: dict):
     print(f"[Worker {rank}] Entered _worker", flush=True)
-    t0 = time.time()
-    best_model_path, best_val_loss, history = _train_single_fold(rank, model_param_dict, dataset, train_idx, val_idx, args)
-    print(f"[Worker {rank}] Training finished, dt={time.time()-t0:.2f}s", flush=True)
+    work_start_time = time.time()
+    best_model_path, best_val_loss, history = _train_single_fold(rank, model_param_dict, train_subset, val_subset, args)
+    print(f"[Worker {rank}] Training finished, dt={time.time()-work_start_time:.2f}s", flush=True)
     queue.put((rank, best_model_path, best_val_loss, history))
     queue.close()
 
@@ -201,17 +218,21 @@ def train_neural_network_model_parallel(
         logger.info("SwanLab initialized")
 
     logger.info("Starting 4-fold parallel training on 4 GPUs")
+    
+    start_time = time.time()
 
     kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
     fold_splits = list(kf.split(range(len(dataset))))
-
+    
     mp.set_start_method("spawn", force=True)
     queue = mp.Queue()
     processes = []
-
+    
     for fold in range(k_folds):
         train_idx, val_idx = fold_splits[fold]
-        p = mp.Process(target=_worker, args=(fold, queue, model_param_dict, dataset, train_idx, val_idx, args))
+        train_subset = Subset(dataset, train_idx)
+        val_subset = Subset(dataset, val_idx)
+        p = mp.Process(target=_worker, args=(fold, queue, model_param_dict, train_subset, val_subset, args))
         p.start()
         processes.append(p)
 

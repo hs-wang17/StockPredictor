@@ -23,7 +23,7 @@ def _process_single_file_worker(args_pack):
     [内部Worker函数] 子进程执行的具体逻辑
     注意：此函数必须定义在模块顶层，否则 multiprocessing 无法序列化 (pickling)
     """
-    date, data_dir, filter_index = args_pack
+    date, data_dir, filter_index, type = args_pack
 
     file_path = os.path.join(data_dir, f"{date}.fea")
     output_path = os.path.join(TEMP_OUTPUT_DIR, f"proc_{date}.feather")
@@ -31,6 +31,10 @@ def _process_single_file_worker(args_pack):
     try:
         data = pipeline_data.load_data(file_path)
         if "label" in data.columns:
+            if type == "train":
+                data = data.dropna(subset=["label"])  # Drop rows with missing labels when processing training data (but not prediction data)
+            elif type == "predict":
+                pass  # TODO: revise this later
             target = data["label"]
             data = data.drop(columns=["label"])
             target.to_frame(name="target").to_feather(output_path.replace(".feather", "_target.feather"))
@@ -56,7 +60,7 @@ def _process_single_file_worker(args_pack):
         return date, None, False, None
 
 
-def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs_io=32):
+def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs_io=32, type="train"):
     """
     [对外接口] 并行加载数据的主函数
 
@@ -78,7 +82,7 @@ def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs
     start_time = time.time()
 
     # 2. 准备参数
-    args_list = [(date, data_dir, filter_index) for date in date_list]
+    args_list = [(date, data_dir, filter_index, type) for date in date_list]
 
     # 3. 第一阶段：多进程计算 (CPU Bound)
     # 使用 ProcessPoolExecutor 绕过 GIL 锁

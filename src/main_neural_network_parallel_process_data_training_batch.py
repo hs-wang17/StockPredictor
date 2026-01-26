@@ -17,7 +17,7 @@ def run():
 
     # Generate training and prediction periods
     date_list = sorted([file_name[:8] for file_name in os.listdir(args.data_dir)[:]])  # Get all available dates
-    trade_date_list = pd.read_feather("/home/haris/mydata/trade_date.fea")  # Load trade date list
+    trade_date_list = pd.read_feather(args.trade_date_path)  # Load trade date list
     date_list = [date for date in date_list if date in trade_date_list["trade_date"].astype(str).tolist()]  # Filter dates to include only trade dates
     date_list = [date for date in date_list if date >= args.start_date and date <= args.end_date]  # Filter dates based on start and end dates
 
@@ -65,28 +65,27 @@ def run():
         if args.inverse:
             i = num_periods - 1 - i
         if hasattr(args, "begin_period") and i < args.begin_period:
-            logger.info(f"Skipping period {i+1} because begin_period={args.begin_period}")
+            logger.info(f"Skipping period {i} because begin_period={args.begin_period}")
             continue
 
-        logger.info(f"Period {i+1}:")
+        logger.info(f"Period {i}:")
         logger.info(f"  Train Dates: {train_dates_list[i][0]} to {train_dates_list[i][-1]}; Length: {len(train_dates_list[i])} days")
         logger.info(f"  Predict Dates: {predict_dates_list[i][0]} to {predict_dates_list[i][-1]}; Length: {len(predict_dates_list[i])} days")
 
         train_date_list, predict_date_list = train_dates_list[i], predict_dates_list[i]
-        # Delete train_date_list 20240201-20240223
         train_data_list, predict_data_list = [], []
         filter_index = pipeline_filter.read_filter_index(file_path=args.filter_file_path, period_index=i)
 
         # Loading and preprocessing training data using parallel processing
         logger.info("Loading and preprocessing training data...")
         train_data_list, feature_cols = utils_process_data_parallel.key_parallel(
-            train_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io
+            train_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io, type="train"
         )
 
-        # Loading and normalizing prediction data using parallel processing
-        logger.info("Loading and normalizing prediction data...")
+        # Loading and preprocessing prediction data using parallel processing
+        logger.info("Loading and preprocessing prediction data...")
         predict_data_list, _ = utils_process_data_parallel.key_parallel(
-            predict_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io
+            predict_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io, type="predict"
         )
 
         train_dataset, _ = utils_dataloader.get_dataloader(train_data_list, batch_size=args.train_batch_size, shuffle=False)

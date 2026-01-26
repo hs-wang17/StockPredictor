@@ -32,6 +32,7 @@
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
 : "${START_DATE:=20180401}"
+: "${TRADE_DATE_PATH:=/home/haris/mydata_20251231/trade_date.fea}"
 : "${TRAIN_BATCH_SIZE:=1}"
 : "${TRAIN_PERIOD_DAYS:=720}"
 : "${USE_SWANLAB:=False}"
@@ -63,6 +64,7 @@
     --model_save_frequency "${MODEL_SAVE_FREQUENCY}" \
     --slide_period_days "${SLIDE_PERIOD_DAYS}" \
     --start_date "${START_DATE}" \
+    --trade_date_path "${TRADE_DATE_PATH}" \
     --train_batch_size "${TRAIN_BATCH_SIZE}" \
     --train_period_days "${TRAIN_PERIOD_DAYS}" \
     --use_swanlab "${USE_SWANLAB}" \

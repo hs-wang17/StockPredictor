@@ -99,19 +99,52 @@ class ResBlock(nn.Module):
         return x
 
 
+# class ResNetModel(nn.Module):
+#     def __init__(self, input_dim, hidden_dim, output_dim):
+#         super(ResNetModel, self).__init__()
+#         self.input_linear = nn.Linear(input_dim, hidden_dim * 4)
+#         self.input_ln = nn.LayerNorm(hidden_dim * 4)
+#         self.res_blocks = nn.Sequential(ResBlock(hidden_dim * 4, hidden_dim))
+#         self.output = nn.Sequential(nn.Dropout(0.1), nn.Linear(hidden_dim, output_dim))
+#         self._initialize_weights()
+
+#     def _initialize_weights(self):
+#         for m in self.modules():
+#             if isinstance(m, nn.Linear):
+#                 nn.init.kaiming_normal_(m.weight)
+#                 if m.bias is not None:
+#                     nn.init.constant_(m.bias, 0)
+#             elif isinstance(m, nn.LayerNorm):
+#                 nn.init.constant_(m.weight, 1)
+#                 nn.init.constant_(m.bias, 0)
+
+#     def forward(self, x):
+#         x = self.input_linear(x)
+#         x = self.input_ln(x)
+#         x = F.relu(x)
+#         x = self.res_blocks(x)
+#         x = self.output(x)
+#         return x
+
+
 class ResNetModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(ResNetModel, self).__init__()
-        self.input_linear = nn.Linear(input_dim, hidden_dim * 4)
-        self.input_ln = nn.LayerNorm(hidden_dim * 4)
-        self.res_blocks = nn.Sequential(ResBlock(hidden_dim * 4, hidden_dim))
+        wide_dim = max(hidden_dim * 4, 512)
+        self.input_linear = nn.Linear(input_dim, wide_dim)
+        self.input_ln = nn.LayerNorm(wide_dim)
+        self.res_blocks = nn.Sequential(
+            ResBlock(wide_dim, wide_dim),
+            ResBlock(wide_dim, wide_dim),
+            ResBlock(wide_dim, hidden_dim)
+        )
         self.output = nn.Sequential(nn.Dropout(0.1), nn.Linear(hidden_dim, output_dim))
         self._initialize_weights()
 
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight)
+                nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.LayerNorm):
@@ -125,8 +158,8 @@ class ResNetModel(nn.Module):
         x = self.res_blocks(x)
         x = self.output(x)
         return x
-
-
+    
+    
 class ResNetBackboneModel(nn.Module):
 
     def __init__(self, input_dim, hidden_dim, output_dim, label_dim=4):
@@ -236,6 +269,15 @@ def neural_network_model(input_dim: int, hidden_dim: int, output_dim: int, model
         model = ResNetAttentionModel(input_dim, hidden_dim, output_dim)
     elif model_type == "gru":
         model = GRUModel(input_dim, hidden_dim, output_dim)
+    elif model_type == "mlp_classification":
+        model = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, hidden_dim),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_dim, output_dim),
+            torch.nn.Sigmoid(),
+        )
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
     return model
