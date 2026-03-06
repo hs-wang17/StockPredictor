@@ -26,13 +26,15 @@ def _process_single_file_worker(args_pack):
     date, data_dir, filter_index, type = args_pack
 
     file_path = os.path.join(data_dir, f"{date}.fea")
-    output_path = os.path.join(TEMP_OUTPUT_DIR, f"proc_{date}.feather")
+    output_path = os.path.join(TEMP_OUTPUT_DIR, f"proc_{date}_{time.strftime("%Y%m%d%H%M%S")}.feather")
 
     try:
         data = pipeline_data.load_data(file_path)
         if "label" in data.columns:
             if type == "train":
-                data = data.dropna(subset=["label"])  # Drop rows with missing labels when processing training data (but not prediction data)
+                data = data.dropna(
+                    subset=["label"]
+                )  # Drop rows with missing labels when processing training data (but not prediction data)
             elif type == "predict":
                 pass  # TODO: revise this later
             target = data["label"]

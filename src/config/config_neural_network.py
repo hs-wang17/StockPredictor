@@ -22,15 +22,22 @@ def parse_args():
     parser.add_argument("--from_start", type=str2bool, default=False, help="Whether to train the model from scratch (default: False)")
     parser.add_argument("--gap_days", type=int, default=20, help="Days between end of training and start of prediction")
     parser.add_argument("--hidden_dim", type=int, default=64, help="Hidden dimension size for the neural network (default: 64)")
-    parser.add_argument("--inverse", type=str2bool, default=False, help="Whether to invert the training and prediction period (default: False)")
+    parser.add_argument(
+        "--inverse", type=str2bool, default=False, help="Whether to invert the training and prediction period (default: False)"
+    )
     parser.add_argument("--k_folds", type=int, default=4, help="Number of folds for K-fold cross-validation (default: 4)")
     # parser.add_argument("--label_file_path", type=str, default="/home/haris/mydata/label.fea", help="Path to label file")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate for training (default: 1e-4)")
     parser.add_argument("--lr_decay_gamma", type=float, default=0.99, help="Learning rate decay gamma (default: 0.99)")
-    parser.add_argument("--log_dir", type=str, default="/home/haris/results/logs", help="Directory to save logs (default: '/home/haris/results/logs')")
+    parser.add_argument(
+        "--log_dir", type=str, default="/home/haris/results/logs", help="Directory to save logs (default: '/home/haris/results/logs')"
+    )
     parser.add_argument("--model_type", type=str, default="mlp", help="Type of model to use (default: 'mlp')")
     parser.add_argument(
-        "--model_save_dir", type=str, default="/home/haris/results/models", help="Directory to save models (default: '/home/haris/results/models')"
+        "--model_save_dir",
+        type=str,
+        default="/home/haris/results/models",
+        help="Directory to save models (default: '/home/haris/results/models')",
     )
     parser.add_argument("--num_periods", type=int, default=None, help="Number of periods to process (default: all)")
     parser.add_argument("--predict_batch_size", type=int, default=64, help="Batch size for prediction (default: 64)")

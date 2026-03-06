@@ -15,7 +15,7 @@
 : "${EPOCHS:=200}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
 : "${FROM_START:=False}"
-: "${GAP_DAYS:=10}"
+: "${GAP_DAYS:=20}"
 : "${HIDDEN_DIM:=64}"
 : "${INVERSE:=True}"
 : "${K_FOLDS:=4}"

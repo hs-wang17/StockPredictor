@@ -18,8 +18,12 @@ def run():
     # Generate training and prediction periods
     date_list = sorted([file_name[:8] for file_name in os.listdir(args.data_dir)[:]])  # Get all available dates
     trade_date_list = pd.read_feather(args.trade_date_path)  # Load trade date list
-    date_list = [date for date in date_list if date in trade_date_list["trade_date"].astype(str).tolist()]  # Filter dates to include only trade dates
-    date_list = [date for date in date_list if date >= args.start_date and date <= args.end_date]  # Filter dates based on start and end dates
+    date_list = [
+        date for date in date_list if date in trade_date_list["trade_date"].astype(str).tolist()
+    ]  # Filter dates to include only trade dates
+    date_list = [
+        date for date in date_list if date >= args.start_date and date <= args.end_date
+    ]  # Filter dates based on start and end dates
 
     num_periods, train_dates_list, predict_dates_list = utils_function.generate_train_predict_dates(
         date_list,
@@ -70,7 +74,9 @@ def run():
 
         logger.info(f"Period {i}:")
         logger.info(f"  Train Dates: {train_dates_list[i][0]} to {train_dates_list[i][-1]}; Length: {len(train_dates_list[i])} days")
-        logger.info(f"  Predict Dates: {predict_dates_list[i][0]} to {predict_dates_list[i][-1]}; Length: {len(predict_dates_list[i])} days")
+        logger.info(
+            f"  Predict Dates: {predict_dates_list[i][0]} to {predict_dates_list[i][-1]}; Length: {len(predict_dates_list[i])} days"
+        )
 
         train_date_list, predict_date_list = train_dates_list[i], predict_dates_list[i]
         train_data_list, predict_data_list = [], []
@@ -85,7 +91,12 @@ def run():
         # Loading and preprocessing prediction data using parallel processing
         logger.info("Loading and preprocessing prediction data...")
         predict_data_list, _ = utils_process_data_parallel.key_parallel(
-            predict_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io, type="predict"
+            predict_date_list,
+            args.data_dir,
+            filter_index=filter_index,
+            n_jobs_calc=args.n_jobs_calc,
+            n_jobs_io=args.n_jobs_io,
+            type="predict",
         )
 
         train_dataset, _ = utils_dataloader.get_dataloader(train_data_list, batch_size=args.train_batch_size, shuffle=False)

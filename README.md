@@ -128,7 +128,7 @@ or / 或者
 screen -S stock_predictor -X quit
 screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/update/model/update_neural_network_parallel_train.sh > /home/haris/logs/update_para_train_20251229.log 2>&1'
 screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/update/model/update_neural_network_parallel_predict.sh > /home/haris/logs/update_para_predict_20251229.log 2>&1'
-screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/run_neural_network_parallel_process_data_training_batch.sh > /home/haris/logs/run_para_20251219.log 2>&1'
+screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/run_neural_network_parallel_process_data_training_batch.sh > /home/haris/logs/run_para_20260307.log 2>&1'
 screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/run_neural_network_parallel_process_data_training_batch_classification.sh > /home/haris/logs/run_para_20260117.log 2>&1'
 ```
 
