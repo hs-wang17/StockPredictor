@@ -23,6 +23,9 @@ def parse_args():
     parser.add_argument("--gap_days", type=int, default=20, help="Days between end of training and start of prediction")
     parser.add_argument("--hidden_dim", type=int, default=64, help="Hidden dimension size for the neural network (default: 64)")
     parser.add_argument(
+        "--index_weight", type=str2bool, default=False, help="Whether to use index weight as a weighting feature (default: False)"
+    )
+    parser.add_argument(
         "--inverse", type=str2bool, default=False, help="Whether to invert the training and prediction period (default: False)"
     )
     parser.add_argument("--k_folds", type=int, default=4, help="Number of folds for K-fold cross-validation (default: 4)")

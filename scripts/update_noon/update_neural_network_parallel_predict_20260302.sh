@@ -31,7 +31,7 @@
 : "${PROJECT_NAME:=StockPredictor_20260302}"
 : "${MODEL_SAVE_FREQUENCY:=1}"
 : "${SLIDE_PERIOD_DAYS:=0}"
-: "${START_DATE:=20251024}"
+: "${START_DATE:=20260101}"
 : "${TRADE_DATE_PATH:=/home/haris/raid0/shared/haris/mydata_20260127/trade_date.fea}"
 : "${TRAIN_BATCH_SIZE:=1}"
 : "${TRAIN_PERIOD_DAYS:=720}"
@@ -79,3 +79,4 @@
 # Finish message
 # -----------------------------
 echo "Neural Network predictor pipeline finished!"
+# cat /home/haris/logs/update_predict_20260302.log | mail -s "每日预测任务日志(noon) - $(date +\%Y-\%m-\%d)" xsheng9867@163.com

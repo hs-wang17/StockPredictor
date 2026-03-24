@@ -85,7 +85,13 @@ def run():
         # Loading and preprocessing training data using parallel processing
         logger.info("Loading and preprocessing training data...")
         train_data_list, feature_cols = utils_process_data_parallel.key_parallel(
-            train_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io, type="train"
+            train_date_list,
+            args.data_dir,
+            filter_index=filter_index,
+            n_jobs_calc=args.n_jobs_calc,
+            n_jobs_io=args.n_jobs_io,
+            type="train",
+            use_index_weight=args.index_weight,
         )
 
         # Loading and preprocessing prediction data using parallel processing
@@ -97,6 +103,7 @@ def run():
             n_jobs_calc=args.n_jobs_calc,
             n_jobs_io=args.n_jobs_io,
             type="predict",
+            use_index_weight=args.index_weight,
         )
 
         train_dataset, _ = utils_dataloader.get_dataloader(train_data_list, batch_size=args.train_batch_size, shuffle=False)
@@ -121,6 +128,7 @@ def run():
             lr_decay_gamma=args.lr_decay_gamma,
             batch_size=args.train_batch_size,
             timestamp=timestamp,
+            use_index_weight=args.index_weight,
         )
 
         # Make predictions

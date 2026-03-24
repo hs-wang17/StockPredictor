@@ -79,7 +79,9 @@ def make_predictions_neural_network(
         stock_codes = pd.concat(stock_codes, ignore_index=True)
         stock_codes = stock_codes.apply(lambda x: str(int(x)).zfill(6))
 
-        fold_df = pd.DataFrame({"date": dates, "stock_code": stock_codes, f"prediction_fold{fold_idx}": fold_predictions, f"label_fold{fold_idx}": fold_labels})
+        fold_df = pd.DataFrame(
+            {"date": dates, "stock_code": stock_codes, f"prediction_fold{fold_idx}": fold_predictions, f"label_fold{fold_idx}": fold_labels}
+        )
         all_fold_preds.append(fold_df)
 
     # Merge all folds

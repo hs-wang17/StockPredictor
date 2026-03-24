@@ -20,17 +20,26 @@ class ICLoss(nn.Module):
         return loss
 
 
+# class WeightedMSELoss(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.mse = nn.MSELoss(reduction="none")
+
+#     def forward(self, pred, target, weight):
+#         base_loss = self.mse(pred, target)
+#         return (weight * base_loss).mean()
+
+
 class WeightedMSELoss(nn.Module):
-    def __init__(self, alpha=1.0, eps=1e-6):
+    def __init__(self):
         super().__init__()
-        self.alpha = alpha
-        self.eps = eps
         self.mse = nn.MSELoss(reduction="none")
 
-    def forward(self, pred, target):
-        base_loss = self.mse(pred, target)
-        weight = (pred.abs().detach() + self.eps) ** self.alpha
-        return (weight * base_loss).mean()
+    def forward(self, pred, target, weight=None):
+        loss = self.mse(pred, target)
+        if weight is not None:
+            loss = loss * weight
+        return loss
 
 
 class RankWeightedMSELoss(nn.Module):

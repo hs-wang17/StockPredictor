@@ -129,6 +129,12 @@ screen -S stock_predictor -X quit
 screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/update/model/update_neural_network_parallel_train.sh > /home/haris/logs/update_para_train_20251229.log 2>&1'
 screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/update/model/update_neural_network_parallel_predict.sh > /home/haris/logs/update_para_predict_20251229.log 2>&1'
 screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/run_neural_network_parallel_process_data_training_batch.sh > /home/haris/logs/run_para_20260307.log 2>&1'
+screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/save/run_neural_network_parallel_process_data_training_batch_20260309_morning.sh > /home/haris/logs/run_para_20260309.log 2>&1'
+screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/save/run_neural_network_parallel_process_data_training_batch_20260311_call.sh > /home/haris/logs/run_para_20260311.log 2>&1'
+screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/save/run_neural_network_parallel_process_data_training_batch_20260312_call.sh > /home/haris/logs/run_para_20260312.log 2>&1'
+screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/save/run_neural_network_parallel_process_data_training_batch_20260324_call.sh > /home/haris/logs/run_para_20260324.log 2>&1'
+screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/save/run_neural_network_parallel_process_data_training_batch_20260316_noon.sh > /home/haris/logs/run_para_20260316.log 2>&1'
+screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/save/run_neural_network_parallel_process_data_training_batch_20260319_morning.sh > /home/haris/logs/run_para_20260319.log 2>&1'
 screen -dmS stock_predictor bash -c 'bash /home/haris/project/predictor/scripts/run_neural_network_parallel_process_data_training_batch_classification.sh > /home/haris/logs/run_para_20260117.log 2>&1'
 ```
 

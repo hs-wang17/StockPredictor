@@ -46,7 +46,7 @@ def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, ar
     elif args["criterion"] == "ic":
         criterion = utils_neural_network_model.ICLoss()
     elif args["criterion"] == "weighted_mse":
-        criterion = utils_neural_network_model.WeightedMSELoss(alpha=1.0)
+        criterion = utils_neural_network_model.WeightedMSELoss()
     else:
         criterion = torch.nn.MSELoss(reduction="none")
 
@@ -66,26 +66,41 @@ def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, ar
         model.train()
         train_loss = 0.0
         for _, _, features, labels, mask in train_loader:
-            features = features.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
-            mask = mask.to(device, non_blocking=True)
-            optimizer.zero_grad()
-            outputs = model(features)
-            if isinstance(outputs, (tuple, list)):
-                pred_labels, score = outputs
-                score = score.squeeze(-1)
-                loss_horizon_raw = criterion(pred_labels, labels)
-                loss_horizon = (loss_horizon_raw.mean(dim=-1) * mask).sum() / mask.sum()
-                loss_horizon.backward(retain_graph=True)
-                label_score = labels[:, :, -1].squeeze(-1)  # (B, N)
-                loss_score_raw = criterion(score, label_score)  # (B, N)
-                loss = (loss_score_raw * mask).sum() / mask.sum()
+            if not args["use_index_weight"]:
+                features = features.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                mask = mask.to(device, non_blocking=True)
+                optimizer.zero_grad()
+                outputs = model(features)
+                if isinstance(outputs, (tuple, list)):
+                    pred_labels, score = outputs
+                    score = score.squeeze(-1)
+                    loss_horizon_raw = criterion(pred_labels, labels)
+                    loss_horizon = (loss_horizon_raw.mean(dim=-1) * mask).sum() / mask.sum()
+                    loss_horizon.backward(retain_graph=True)
+                    label_score = labels[:, :, -1].squeeze(-1)  # (B, N)
+                    loss_score_raw = criterion(score, label_score)  # (B, N)
+                    loss = (loss_score_raw * mask).sum() / mask.sum()
+                else:
+                    loss_raw = criterion(outputs.squeeze(-1), labels.squeeze(-1))
+                    loss = (loss_raw * mask).sum() / mask.sum()
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
             else:
-                loss_raw = criterion(outputs.squeeze(-1), labels.squeeze(-1))
+                features = features.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                labels_ = labels[:, :, 0]
+                weights = labels[:, :, 1]
+                mask = mask.to(device, non_blocking=True) * weights
+                optimizer.zero_grad()
+                outputs = model(features)
+                # loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1), weights.squeeze(-1))
+                loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1))
                 loss = (loss_raw * mask).sum() / mask.sum()
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.item()
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
         scheduler.step()
 
         # validation
@@ -93,20 +108,32 @@ def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, ar
             model.eval()
             val_loss = 0.0
             for _, _, features, labels, mask in val_loader:
-                features = features.to(device)
-                labels = labels.to(device)
-                mask = mask.to(device)
-                outputs = model(features)
-                if isinstance(outputs, (tuple, list)):
-                    pred_labels, score = outputs
-                    score = score.squeeze(-1)
-                    label_score = labels[:, :, -1].squeeze(-1)  # (B, N)
-                    loss_score_raw = criterion(score, label_score)  # (B, N)
-                    loss = (loss_score_raw * mask).sum() / mask.sum()
+                if not args["use_index_weight"]:
+                    features = features.to(device)
+                    labels = labels.to(device)
+                    mask = mask.to(device)
+                    outputs = model(features)
+                    if isinstance(outputs, (tuple, list)):
+                        pred_labels, score = outputs
+                        score = score.squeeze(-1)
+                        label_score = labels[:, :, -1].squeeze(-1)  # (B, N)
+                        loss_score_raw = criterion(score, label_score)  # (B, N)
+                        loss = (loss_score_raw * mask).sum() / mask.sum()
+                    else:
+                        loss_raw = criterion(outputs.squeeze(-1), labels.squeeze(-1))
+                        loss = (loss_raw * mask).sum() / mask.sum()
+                    val_loss += loss.item()
                 else:
-                    loss_raw = criterion(outputs.squeeze(-1), labels.squeeze(-1))
+                    features = features.to(device)
+                    labels = labels.to(device)
+                    labels_ = labels[:, :, 0]
+                    weights = labels[:, :, 1]
+                    mask = mask.to(device) * weights
+                    outputs = model(features)
+                    # loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1), weights.squeeze(-1))
+                    loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1))
                     loss = (loss_raw * mask).sum() / mask.sum()
-                val_loss += loss.item()
+                    val_loss += loss.item()
 
         avg_train_loss = train_loss / len(train_loader)
         avg_val_loss = val_loss / len(val_loader)
@@ -166,6 +193,7 @@ def train_neural_network_model_parallel(
     lr_decay_gamma: float = 0.99,
     batch_size: int = 32,
     timestamp: str = "None",
+    use_index_weight: bool = False,
 ):
     """
     Train a neural network model with parallel processing on 4 GPUs using KFold cross-validation.
@@ -207,6 +235,7 @@ def train_neural_network_model_parallel(
         "lr_decay_gamma": lr_decay_gamma,
         "batch_size": batch_size,
         "criterion": criterion,
+        "use_index_weight": use_index_weight,
     }
 
     if use_swanlab:
