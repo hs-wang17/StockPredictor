@@ -23,21 +23,35 @@ def _process_single_file_worker(args_pack):
     [内部Worker函数] 子进程执行的具体逻辑
     注意：此函数必须定义在模块顶层，否则 multiprocessing 无法序列化 (pickling)
     """
-    date, data_dir, filter_index, type = args_pack
+    date, data_dir, filter_index, type, use_index_weight = args_pack
 
     file_path = os.path.join(data_dir, f"{date}.fea")
-    output_path = os.path.join(TEMP_OUTPUT_DIR, f"proc_{date}.feather")
+    output_path = os.path.join(TEMP_OUTPUT_DIR, f"proc_{date}_{time.strftime("%Y%m%d%H%M%S")}.feather")
 
     try:
         data = pipeline_data.load_data(file_path)
         if "label" in data.columns:
-            if type == "train":
-                data = data.dropna(subset=["label"])  # Drop rows with missing labels when processing training data (but not prediction data)
-            elif type == "predict":
-                pass  # TODO: revise this later
-            target = data["label"]
-            data = data.drop(columns=["label"])
-            target.to_frame(name="target").to_feather(output_path.replace(".feather", "_target.feather"))
+            if not use_index_weight:
+                if type == "train":
+                    data = data.dropna(
+                        subset=["label"]
+                    )  # Drop rows with missing labels when processing training data (but not prediction data)
+                elif type == "predict":
+                    pass  # TODO: revise this later
+                target = data["label"]
+                data = data.drop(columns=["label"])
+                target.to_frame(name="target").to_feather(output_path.replace(".feather", "_target.feather"))
+            else:
+                if type == "train":
+                    data = data.dropna(
+                        subset=["label", "index_weight"]
+                    )  # Drop rows with missing labels when processing training data (but not prediction data)
+                elif type == "predict":
+                    pass  # TODO: revise this later
+                target = data[["label", "index_weight"]]
+                data = data.drop(columns=["label", "index_weight"])
+                target.columns = ["target", "index_weight"]
+                target.to_feather(output_path.replace(".feather", "_target.feather"))
         else:
             target = None
         data.columns = [data.columns[j].strip() for j in range(len(data.columns))]
@@ -60,7 +74,7 @@ def _process_single_file_worker(args_pack):
         return date, None, False, None
 
 
-def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs_io=32, type="train"):
+def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs_io=32, type="train", use_index_weight=False):
     """
     [对外接口] 并行加载数据的主函数
 
@@ -70,6 +84,8 @@ def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs
         filter_index: 特征筛选的索引 (可选)
         n_jobs_calc: 计算阶段并发数 (建议接近 CPU 核数)
         n_jobs_io: 加载阶段并发数 (建议 16-32)
+        type: 数据需求类型 ("train" 或 "predict")
+        use_index_weight: 是否使用指数权重
 
     Returns:
         List[Tuple[pd.DataFrame, pd.Series]]: 处理好的数据和目标变量元组列表，按日期排序
@@ -82,7 +98,7 @@ def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs
     start_time = time.time()
 
     # 2. 准备参数
-    args_list = [(date, data_dir, filter_index, type) for date in date_list]
+    args_list = [(date, data_dir, filter_index, type, use_index_weight) for date in date_list]
 
     # 3. 第一阶段：多进程计算 (CPU Bound)
     # 使用 ProcessPoolExecutor 绕过 GIL 锁
@@ -102,7 +118,10 @@ def key_parallel(date_list, data_dir, filter_index=None, n_jobs_calc=128, n_jobs
         try:
             data = pd.read_feather(data_path)
             if os.path.exists(data_path.replace(".feather", "_target.feather")):
-                target = pd.read_feather(data_path.replace(".feather", "_target.feather"))["target"]
+                if not use_index_weight:
+                    target = pd.read_feather(data_path.replace(".feather", "_target.feather"))["target"]
+                else:
+                    target = pd.read_feather(data_path.replace(".feather", "_target.feather"))[["target", "index_weight"]]
                 os.remove(data_path)  # 读完即删
                 os.remove(data_path.replace(".feather", "_target.feather"))
                 return (data, target), feature_cols

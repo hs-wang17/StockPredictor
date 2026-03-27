@@ -8,7 +8,7 @@
 # Default parameters (can be overridden by ENV variables)
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
-: "${DATA_DIR:=/home/haris/mydata_20251231/concat_daily_factor_with_label}"
+: "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20251231/concat_daily_factor_with_label}"
 : "${DEVICE:=cuda:0}"
 : "${END_DATE:=}"
 : "${EPOCHS:=200}"
@@ -32,7 +32,7 @@
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
 : "${START_DATE:=20180401}"
-: "${TRADE_DATE_PATH:=/home/haris/mydata_20251231/trade_date.fea}"
+: "${TRADE_DATE_PATH:=/home/haris/raid0/shared/haris/mydata_20251231/trade_date.fea}"
 : "${TRAIN_BATCH_SIZE:=1}"
 : "${TRAIN_PERIOD_DAYS:=720}"
 : "${USE_SWANLAB:=False}"

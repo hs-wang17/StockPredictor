@@ -20,17 +20,26 @@ class ICLoss(nn.Module):
         return loss
 
 
+# class WeightedMSELoss(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.mse = nn.MSELoss(reduction="none")
+
+#     def forward(self, pred, target, weight):
+#         base_loss = self.mse(pred, target)
+#         return (weight * base_loss).mean()
+
+
 class WeightedMSELoss(nn.Module):
-    def __init__(self, alpha=1.0, eps=1e-6):
+    def __init__(self):
         super().__init__()
-        self.alpha = alpha
-        self.eps = eps
         self.mse = nn.MSELoss(reduction="none")
 
-    def forward(self, pred, target):
-        base_loss = self.mse(pred, target)
-        weight = (pred.abs().detach() + self.eps) ** self.alpha
-        return (weight * base_loss).mean()
+    def forward(self, pred, target, weight=None):
+        loss = self.mse(pred, target)
+        if weight is not None:
+            loss = loss * weight
+        return loss
 
 
 class RankWeightedMSELoss(nn.Module):
@@ -133,18 +142,14 @@ class ResNetModel(nn.Module):
         wide_dim = max(hidden_dim * 4, 512)
         self.input_linear = nn.Linear(input_dim, wide_dim)
         self.input_ln = nn.LayerNorm(wide_dim)
-        self.res_blocks = nn.Sequential(
-            ResBlock(wide_dim, wide_dim),
-            ResBlock(wide_dim, wide_dim),
-            ResBlock(wide_dim, hidden_dim)
-        )
+        self.res_blocks = nn.Sequential(ResBlock(wide_dim, wide_dim), ResBlock(wide_dim, wide_dim), ResBlock(wide_dim, hidden_dim))
         self.output = nn.Sequential(nn.Dropout(0.1), nn.Linear(hidden_dim, output_dim))
         self._initialize_weights()
 
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.LayerNorm):
@@ -158,8 +163,8 @@ class ResNetModel(nn.Module):
         x = self.res_blocks(x)
         x = self.output(x)
         return x
-    
-    
+
+
 class ResNetBackboneModel(nn.Module):
 
     def __init__(self, input_dim, hidden_dim, output_dim, label_dim=4):
@@ -200,7 +205,9 @@ class ResNetBackboneModel(nn.Module):
 class SEBlock(torch.nn.Module):
     def __init__(self, dim, reduction=16):
         super(SEBlock, self).__init__()
-        self.fc = torch.nn.Sequential(torch.nn.Linear(dim, dim // reduction), torch.nn.ReLU(), torch.nn.Linear(dim // reduction, dim), torch.nn.Sigmoid())
+        self.fc = torch.nn.Sequential(
+            torch.nn.Linear(dim, dim // reduction), torch.nn.ReLU(), torch.nn.Linear(dim // reduction, dim), torch.nn.Sigmoid()
+        )
 
     def forward(self, x):
         # x: (batch, dim)
@@ -255,10 +262,12 @@ def neural_network_model(input_dim: int, hidden_dim: int, output_dim: int, model
     """
     if model_type == "mlp":
         model = torch.nn.Sequential(
-            torch.nn.Linear(input_dim, hidden_dim),
-            torch.nn.ReLU(),
-            torch.nn.Linear(hidden_dim, hidden_dim),
-            torch.nn.ReLU(),
+            torch.nn.Linear(input_dim, hidden_dim * 16),
+            torch.nn.GELU(),
+            torch.nn.Linear(hidden_dim * 16, hidden_dim * 4),
+            torch.nn.GELU(),
+            torch.nn.Linear(hidden_dim * 4, hidden_dim),
+            torch.nn.GELU(),
             torch.nn.Linear(hidden_dim, output_dim),
         )
     elif model_type == "resnet":
@@ -271,10 +280,12 @@ def neural_network_model(input_dim: int, hidden_dim: int, output_dim: int, model
         model = GRUModel(input_dim, hidden_dim, output_dim)
     elif model_type == "mlp_classification":
         model = torch.nn.Sequential(
-            torch.nn.Linear(input_dim, hidden_dim),
-            torch.nn.ReLU(),
-            torch.nn.Linear(hidden_dim, hidden_dim),
-            torch.nn.ReLU(),
+            torch.nn.Linear(input_dim, hidden_dim * 16),
+            torch.nn.GELU(),
+            torch.nn.Linear(hidden_dim * 16, hidden_dim * 4),
+            torch.nn.GELU(),
+            torch.nn.Linear(hidden_dim * 4, hidden_dim),
+            torch.nn.GELU(),
             torch.nn.Linear(hidden_dim, output_dim),
             torch.nn.Sigmoid(),
         )

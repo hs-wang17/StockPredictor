@@ -27,7 +27,11 @@ def run():
     )
 
     predict_dataset, _ = utils_dataloader.get_dataloader_predict(predict_data_list, batch_size=args.predict_batch_size, shuffle=False)
-    model = [torch.load(model_path, weights_only=False) for model_path in utils_function.get_latest_model_paths(args.model_save_dir, args.k_folds)]
+    model_paths = utils_function.get_latest_model_paths(args.model_save_dir, args.k_folds)
+    logger.info(f"Loading models from {model_paths}...")
+
+    model = [torch.load(model_path, weights_only=False) for model_path in model_paths]
+
     _ = pipeline_predict_neural_network.make_predictions_neural_network(
         model,
         predict_dataset,
@@ -36,6 +40,7 @@ def run():
         project_name=args.project_name,
         period_index=predict_date_list[-1],
         device=args.device,
+        suffix=args.suffix,
     )
 
     logger.info("All periods processed.")

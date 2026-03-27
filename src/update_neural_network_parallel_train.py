@@ -17,7 +17,9 @@ def run():
     # Generate training and prediction periods
     date_list = sorted([file_name[:8] for file_name in os.listdir(args.data_dir)])  # Get all available dates
     trade_date_list = pd.read_feather(args.trade_date_path)  # Load trade date list
-    date_list = [date for date in date_list if date in trade_date_list["trade_date"].astype(str).tolist()]  # Filter dates to include only trade dates
+    date_list = [
+        date for date in date_list if date in trade_date_list["trade_date"].astype(str).tolist()
+    ]  # Filter dates to include only trade dates
     date_list = [date for date in date_list if date >= args.start_date]  # Filter dates based on start and end dates
 
     if (len(date_list) - (args.train_period_days + args.gap_days)) % args.slide_period_days != 1:
@@ -29,7 +31,10 @@ def run():
         logger.info(f"Need to update the model. Proceeding with training.")
 
         num_periods, train_dates_list, _ = utils_function.generate_train_predict_dates(
-            date_list, train_period_days=args.train_period_days, slide_period_days=args.slide_period_days, remove_abnormal=args.remove_abnormal
+            date_list,
+            train_period_days=args.train_period_days,
+            slide_period_days=args.slide_period_days,
+            remove_abnormal=args.remove_abnormal,
         )  # Generate train date lists for each period
 
         logger.info(f"Number of periods: {num_periods}")
@@ -53,13 +58,23 @@ def run():
             # Loading and preprocessing training data
             logger.info("Loading and preprocessing training data...")
             train_data_list, feature_cols = utils_process_data_parallel.key_parallel(
-                train_date_list, args.data_dir, filter_index=filter_index, n_jobs_calc=args.n_jobs_calc, n_jobs_io=args.n_jobs_io, type="train"
+                train_date_list,
+                args.data_dir,
+                filter_index=filter_index,
+                n_jobs_calc=args.n_jobs_calc,
+                n_jobs_io=args.n_jobs_io,
+                type="train",
             )
 
             train_dataset, _ = utils_dataloader.get_dataloader(train_data_list, batch_size=args.train_batch_size, shuffle=False)
 
             # Train model
-            model_param_dict = {"input_dim": len(feature_cols), "hidden_dim": args.hidden_dim, "output_dim": 1, "model_type": args.model_type}
+            model_param_dict = {
+                "input_dim": len(feature_cols),
+                "hidden_dim": args.hidden_dim,
+                "output_dim": 1,
+                "model_type": args.model_type,
+            }
             _ = pipeline_train_neural_network.train_neural_network_model_parallel(
                 model_param_dict,
                 train_dataset,  # train_dataloader when without validation

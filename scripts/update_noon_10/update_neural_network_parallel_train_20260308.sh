@@ -8,31 +8,31 @@
 # Default parameters (can be overridden by ENV variables)
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
-: "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20251231/concat_daily_factor}"
+: "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20260127/concat_daily_factor_with_label}"
 : "${DEVICE:=cuda:0}"
-: "${END_DATE:=20251114}"
-: "${EPOCHS:=200}"
+: "${END_DATE:=}"
+: "${EPOCHS:=80}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
 : "${FROM_START:=False}"
-: "${GAP_DAYS:=20}"
+: "${GAP_DAYS:=10}"
 : "${HIDDEN_DIM:=64}"
-: "${INVERSE:=False}"
+: "${INVERSE:=True}"
 : "${K_FOLDS:=4}"
 # : "${LABEL_FILE_PATH:=/home/haris/mydata/label.fea}"
 : "${LEARNING_RATE:=0.0001}"
 : "${LR_DECAY_GAMMA:=0.99}"
 : "${LOG_DIR:=/home/haris/results/logs}"
-: "${MODEL_TYPE:=resnet}"
-: "${MODEL_SAVE_DIR:=/home/haris/mymodel/models/StockPredictor_20251231}"
+: "${MODEL_TYPE:=mlp}"
+: "${MODEL_SAVE_DIR:=/home/haris/mymodel_noon_10/models/StockPredictor_20260308}"
 : "${NUM_PERIODS:=}"
 : "${PREDICT_BATCH_SIZE:=64}"
 : "${PREDICT_PERIOD_DAYS:=60}"
-: "${PREDICTIONS_SAVE_DIR:=/home/haris/mymodel/predictions}"
-: "${PROJECT_NAME:=StockPredictor_20251231}"
+: "${PREDICTIONS_SAVE_DIR:=/home/haris/mymodel_noon_10/predictions/StockPredictor_20260308}"
+: "${PROJECT_NAME:=StockPredictor_20260308}"
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
 : "${START_DATE:=20180401}"
-: "${TRADE_DATE_PATH:=/home/haris/raid0/shared/haris/mydata_20251231/trade_date.fea}"
+: "${TRADE_DATE_PATH:=/home/haris/raid0/shared/haris/mydata_20260127/trade_date_10.fea}"
 : "${TRAIN_BATCH_SIZE:=1}"
 : "${TRAIN_PERIOD_DAYS:=720}"
 : "${USE_SWANLAB:=False}"
@@ -40,7 +40,7 @@
 # -----------------------------
 # Run Python script
 # -----------------------------
-/home/haris/miniconda3/envs/myenv/bin/python /home/haris/project/predictor/src/entire_neural_network_parallel_predict.py \
+/home/haris/miniconda3/envs/myenv/bin/python /home/haris/project/predictor/src/update_neural_network_parallel_train.py \
     --begin_period "${BEGIN_PERIOD}" \
     --data_dir "${DATA_DIR}" \
     --device "${DEVICE}" \

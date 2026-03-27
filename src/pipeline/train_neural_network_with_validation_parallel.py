@@ -11,11 +11,13 @@ import tqdm
 
 def fast_collate_fn(batch):
     dates, stock_codes, features, labels, masks = zip(*batch)
-    return (torch.stack(dates, dim=0),
-            torch.stack(stock_codes, dim=0),
-            torch.stack(features, dim=0),
-            torch.stack(labels, dim=0),
-            torch.stack(masks, dim=0))
+    return (
+        torch.stack(dates, dim=0),
+        torch.stack(stock_codes, dim=0),
+        torch.stack(features, dim=0),
+        torch.stack(labels, dim=0),
+        torch.stack(masks, dim=0),
+    )
 
 
 def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, args: dict):
@@ -24,21 +26,9 @@ def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, ar
     torch.cuda.set_device(0)
     device = "cuda:0"
 
-    train_loader = DataLoader(
-        train_subset, 
-        batch_size=args["batch_size"], 
-        shuffle=True, 
-        collate_fn=fast_collate_fn, 
-        pin_memory=True
-    )
-    val_loader = DataLoader(
-        val_subset, 
-        batch_size=args["batch_size"], 
-        shuffle=False, 
-        collate_fn=fast_collate_fn, 
-        pin_memory=True
-    )
-    
+    train_loader = DataLoader(train_subset, batch_size=args["batch_size"], shuffle=True, collate_fn=fast_collate_fn, pin_memory=True)
+    val_loader = DataLoader(val_subset, batch_size=args["batch_size"], shuffle=False, collate_fn=fast_collate_fn, pin_memory=True)
+
     model = utils_neural_network_model.neural_network_model(
         input_dim=model_param_dict["input_dim"],
         hidden_dim=model_param_dict["hidden_dim"],
@@ -56,7 +46,7 @@ def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, ar
     elif args["criterion"] == "ic":
         criterion = utils_neural_network_model.ICLoss()
     elif args["criterion"] == "weighted_mse":
-        criterion = utils_neural_network_model.WeightedMSELoss(alpha=1.0)
+        criterion = utils_neural_network_model.WeightedMSELoss()
     else:
         criterion = torch.nn.MSELoss(reduction="none")
 
@@ -76,57 +66,86 @@ def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, ar
         model.train()
         train_loss = 0.0
         for _, _, features, labels, mask in train_loader:
-            features = features.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
-            mask = mask.to(device, non_blocking=True)
-            optimizer.zero_grad()
-            outputs = model(features)
-            if isinstance(outputs, (tuple, list)):
-                pred_labels, score = outputs
-                score = score.squeeze(-1)
-                loss_horizon_raw = criterion(pred_labels, labels)
-                loss_horizon = (loss_horizon_raw.mean(dim=-1) * mask).sum() / mask.sum()
-                loss_horizon.backward(retain_graph=True)
-                label_score = labels[:, :, -1].squeeze(-1)  # (B, N)
-                loss_score_raw = criterion(score, label_score)  # (B, N)
-                loss = (loss_score_raw * mask).sum() / mask.sum()
-            else:
-                loss_raw = criterion(outputs.squeeze(-1), labels.squeeze(-1))
-                loss = (loss_raw * mask).sum() / mask.sum()
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.item()
-        scheduler.step()
-        
-        # validation
-        with torch.no_grad():
-            model.eval()
-            val_loss = 0.0
-            for _, _, features, labels, mask in val_loader:
-                features = features.to(device)
-                labels = labels.to(device)
-                mask = mask.to(device)
+            if not args["use_index_weight"]:
+                features = features.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                mask = mask.to(device, non_blocking=True)
+                optimizer.zero_grad()
                 outputs = model(features)
                 if isinstance(outputs, (tuple, list)):
                     pred_labels, score = outputs
                     score = score.squeeze(-1)
+                    loss_horizon_raw = criterion(pred_labels, labels)
+                    loss_horizon = (loss_horizon_raw.mean(dim=-1) * mask).sum() / mask.sum()
+                    loss_horizon.backward(retain_graph=True)
                     label_score = labels[:, :, -1].squeeze(-1)  # (B, N)
                     loss_score_raw = criterion(score, label_score)  # (B, N)
                     loss = (loss_score_raw * mask).sum() / mask.sum()
                 else:
                     loss_raw = criterion(outputs.squeeze(-1), labels.squeeze(-1))
                     loss = (loss_raw * mask).sum() / mask.sum()
-                val_loss += loss.item()
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
+            else:
+                features = features.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                labels_ = labels[:, :, 0]
+                weights = labels[:, :, 1]
+                mask = mask.to(device, non_blocking=True) * weights
+                optimizer.zero_grad()
+                outputs = model(features)
+                # loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1), weights.squeeze(-1))
+                loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1))
+                loss = (loss_raw * mask).sum() / mask.sum()
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
+        scheduler.step()
+
+        # validation
+        with torch.no_grad():
+            model.eval()
+            val_loss = 0.0
+            for _, _, features, labels, mask in val_loader:
+                if not args["use_index_weight"]:
+                    features = features.to(device)
+                    labels = labels.to(device)
+                    mask = mask.to(device)
+                    outputs = model(features)
+                    if isinstance(outputs, (tuple, list)):
+                        pred_labels, score = outputs
+                        score = score.squeeze(-1)
+                        label_score = labels[:, :, -1].squeeze(-1)  # (B, N)
+                        loss_score_raw = criterion(score, label_score)  # (B, N)
+                        loss = (loss_score_raw * mask).sum() / mask.sum()
+                    else:
+                        loss_raw = criterion(outputs.squeeze(-1), labels.squeeze(-1))
+                        loss = (loss_raw * mask).sum() / mask.sum()
+                    val_loss += loss.item()
+                else:
+                    features = features.to(device)
+                    labels = labels.to(device)
+                    labels_ = labels[:, :, 0]
+                    weights = labels[:, :, 1]
+                    mask = mask.to(device) * weights
+                    outputs = model(features)
+                    # loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1), weights.squeeze(-1))
+                    loss_raw = criterion(outputs.squeeze(-1), labels_.squeeze(-1))
+                    loss = (loss_raw * mask).sum() / mask.sum()
+                    val_loss += loss.item()
 
         avg_train_loss = train_loss / len(train_loader)
         avg_val_loss = val_loss / len(val_loader)
-        
+
         # 记录到 history
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
         history["lr"].append(optimizer.param_groups[0]["lr"])
 
-        fold_model_dir = os.path.join(args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model")
+        fold_model_dir = os.path.join(
+            args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model"
+        )
         os.makedirs(os.path.dirname(fold_model_dir), exist_ok=True)
 
         # 更新最佳模型
@@ -134,10 +153,14 @@ def _train_single_fold(rank: int, model_param_dict, train_subset, val_subset, ar
             best_val_loss = avg_val_loss
             best_model_state = {k: v.cpu() for k, v in model.state_dict().items()}
             best_epoch = epoch
-            
-    fold_model_dir = os.path.join(args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model")
+
+    fold_model_dir = os.path.join(
+        args["model_save_dir"], f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_model"
+    )
     os.makedirs(fold_model_dir, exist_ok=True)
-    best_model_path = os.path.join(fold_model_dir, f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_epoch{best_epoch}.pt")
+    best_model_path = os.path.join(
+        fold_model_dir, f"{args['project_name']}_{args['timestamp']}_period_{args['period_index']}_fold{rank}_epoch{best_epoch}.pt"
+    )
     model.load_state_dict(best_model_state)
     torch.save(model, best_model_path)
 
@@ -170,6 +193,7 @@ def train_neural_network_model_parallel(
     lr_decay_gamma: float = 0.99,
     batch_size: int = 32,
     timestamp: str = "None",
+    use_index_weight: bool = False,
 ):
     """
     Train a neural network model with parallel processing on 4 GPUs using KFold cross-validation.
@@ -211,6 +235,7 @@ def train_neural_network_model_parallel(
         "lr_decay_gamma": lr_decay_gamma,
         "batch_size": batch_size,
         "criterion": criterion,
+        "use_index_weight": use_index_weight,
     }
 
     if use_swanlab:
@@ -218,16 +243,14 @@ def train_neural_network_model_parallel(
         logger.info("SwanLab initialized")
 
     logger.info("Starting 4-fold parallel training on 4 GPUs")
-    
-    start_time = time.time()
 
     kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
     fold_splits = list(kf.split(range(len(dataset))))
-    
+
     mp.set_start_method("spawn", force=True)
     queue = mp.Queue()
     processes = []
-    
+
     for fold in range(k_folds):
         train_idx, val_idx = fold_splits[fold]
         train_subset = Subset(dataset, train_idx)

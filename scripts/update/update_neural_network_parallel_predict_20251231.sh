@@ -8,7 +8,7 @@
 # Default parameters (can be overridden by ENV variables)
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
-: "${DATA_DIR:=/home/haris/mydata_20251231/concat_daily_factor}"
+: "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20251231/concat_daily_factor}"
 : "${DEVICE:=cuda:0}"
 : "${END_DATE:=}"
 : "${EPOCHS:=200}"
@@ -31,8 +31,9 @@
 : "${PROJECT_NAME:=StockPredictor_20251231}"
 : "${MODEL_SAVE_FREQUENCY:=1}"
 : "${SLIDE_PERIOD_DAYS:=0}"
-: "${START_DATE:=20251024}"
-: "${TRADE_DATE_PATH:=/home/haris/mydata_20251231/trade_date.fea}"
+: "${START_DATE:=20260101}"
+: "${SUFFIX:=_20251231}"
+: "${TRADE_DATE_PATH:=/home/haris/raid0/shared/haris/mydata_20251231/trade_date.fea}"
 : "${TRAIN_BATCH_SIZE:=1}"
 : "${TRAIN_PERIOD_DAYS:=720}"
 : "${USE_SWANLAB:=False}"
@@ -64,6 +65,7 @@
     --model_save_frequency "${MODEL_SAVE_FREQUENCY}" \
     --slide_period_days "${SLIDE_PERIOD_DAYS}" \
     --start_date "${START_DATE}" \
+    --suffix "${SUFFIX}" \
     --trade_date_path "${TRADE_DATE_PATH}" \
     --train_batch_size "${TRAIN_BATCH_SIZE}" \
     --train_period_days "${TRAIN_PERIOD_DAYS}" \
@@ -79,3 +81,4 @@
 # Finish message
 # -----------------------------
 echo "Neural Network predictor pipeline finished!"
+# cat /home/haris/logs/update_predict_20251231.log | mail -s "每日预测任务日志(morning) - $(date +\%Y-\%m-\%d)" xsheng9867@163.com
