@@ -75,7 +75,7 @@
 # -----------------------------
 # Merge prediction data
 # -----------------------------
-/home/haris/miniconda3/envs/myenv/bin/python /home/haris/mymodel_noon/merge_data_20260302.py
+/home/haris/miniconda3/envs/myenv/bin/python /home/haris/mymodel_noon/merge_data_20260302_all_stocks.py
 
 # -----------------------------
 # Finish message

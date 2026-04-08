@@ -9,8 +9,8 @@
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
 : "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20251231/concat_daily_factor}"
-: "${DEVICE:=cpu}"
-: "${END_DATE:=20251114}"
+: "${DEVICE:=cuda:1}"
+: "${END_DATE:=20260105}"
 : "${EPOCHS:=80}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
 : "${FROM_START:=False}"

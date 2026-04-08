@@ -10,7 +10,7 @@
 : "${BEGIN_PERIOD:=0}"
 : "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20251231/concat_daily_factor}"
 : "${DEVICE:=cuda:0}"
-: "${END_DATE:=20251114}"
+: "${END_DATE:=20260105}"
 : "${EPOCHS:=200}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
 : "${FROM_START:=False}"
