@@ -28,7 +28,7 @@
 : "${PREDICT_BATCH_SIZE:=64}"
 : "${PREDICT_PERIOD_DAYS:=60}"
 : "${PREDICTIONS_SAVE_DIR:=/home/haris/mymodel_noon_10/predictions/StockPredictor_20260308}"
-: "${PROJECT_NAME:=StockPredictor_20260308}"
+: "${PROJECT_NAME:=StockPredictor}"
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
 : "${START_DATE:=20180401}"

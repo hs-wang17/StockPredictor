@@ -9,7 +9,7 @@
 # -----------------------------
 : "${BEGIN_PERIOD:=0}"
 : "${DATA_DIR:=/home/haris/raid0/shared/haris/mydata_20251231/concat_daily_factor_with_label_10}"
-: "${DEVICE:=cpu}"
+: "${DEVICE:=cuda:0}"
 : "${END_DATE:=}"
 : "${EPOCHS:=80}"
 : "${FILTER_FILE_PATH:=config/filter_index.fea}"
@@ -28,7 +28,7 @@
 : "${PREDICT_BATCH_SIZE:=64}"
 : "${PREDICT_PERIOD_DAYS:=60}"
 : "${PREDICTIONS_SAVE_DIR:=/home/haris/mymodel_10/predictions/StockPredictor_20260306}"
-: "${PROJECT_NAME:=StockPredictor_20260306}"
+: "${PROJECT_NAME:=StockPredictor}"
 : "${MODEL_SAVE_FREQUENCY:=20}"
 : "${SLIDE_PERIOD_DAYS:=60}"
 : "${START_DATE:=20180401}"

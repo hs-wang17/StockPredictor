@@ -6,9 +6,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.feature_selection import RFE
 
 def read_filter_index(file_path: str, period_index: int) -> list:
-    """Read filter index from a FEA file."""
+    """Read filter index from a CSV file."""
     if os.path.exists(file_path):
-        return pd.read_feather(file_path)[period_index].tolist()
+        return pd.read_csv(file_path, index_col=0).iloc[:, period_index].tolist()
     else:
         return None
 

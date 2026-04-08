@@ -78,6 +78,11 @@
 /home/haris/miniconda3/envs/myenv/bin/python /home/haris/mymodel_noon_10/merge_data_20260308_all_stocks.py
 
 # -----------------------------
+# Fusion morning and noon predictions
+# -----------------------------
+/home/haris/miniconda3/envs/myenv/bin/python /home/haris/mymodel_fusion_10/fusion_noon.py
+
+# -----------------------------
 # Finish message
 # -----------------------------
 echo "Neural Network predictor pipeline finished!"

@@ -81,6 +81,8 @@ def run():
         train_date_list, predict_date_list = train_dates_list[i], predict_dates_list[i]
         train_data_list, predict_data_list = [], []
         filter_index = pipeline_filter.read_filter_index(file_path=args.filter_file_path, period_index=i)
+        
+        logger.info(f"Period {i} filter index: {filter_index}")
 
         # Loading and preprocessing training data using parallel processing
         logger.info("Loading and preprocessing training data...")
